@@ -1,0 +1,45 @@
+01  ctl-opt alwnull(*inputonly) ;
+
+02  dcl-f WORKFILE1 usage(*input:*output:*update)
+                     keyed
+                     extfile('QTEMP/WORKFILE1')
+                     usropn ;
+
+03  exec sql SET OPTION COMMIT = *NONE ;
+
+04  exec sql DROP TABLE QTEMP/WORKFILE ;
+
+05  exec sql   CREATE TABLE QTEMP/WORKFILE AS
+                (SELECT A.ORDNO,A.ORQTY,A.JOBNO,A.DUEDT
+                        A.ITEM,B.ITDSC,A.UFLG1
+                  FROM ORDHDR A, ITMMST B
+                 WHERE A.ITEM = B.ITEM
+                   AND A.DUEDT > 1150115)
+                 WITH DATA
+                 RCDFMT WORKFILER ;
+
+06  exec sql CREATE UNIQUE INDEX QTEMP/WORKFILE1
+                    ON QTEMP/WORKFILE
+                    (DUEDT,ORDNO) ;
+
+07  open WORKFILE1 ;
+
+08  dow (1 = 1) ;
+09    read WORKFILER ;
+10    if (%eof) ;
+11      leave ;
+12    endif ;
+
+13    if (%subst(JOBNO:1:1) = 'A') ;
+14      UFLG1 = '1' ;
+15      update WORKFILER %fields(UFLG1) ;
+16    endif ;
+16  enddo ;
+
+18  *inlr = *on ;
+
+19  clear WORKFILER ;
+20  ORDNO = '*END' ;
+21  write WORKFILER ;
+
+22  close WORKFILE1 ;
